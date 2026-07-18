@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/eHIS.API/eHIS.API.csproj" />
+    <Project Path="src/eHIS.Application/eHIS.Application.csproj" />
+    <Project Path="src/eHIS.Domain/eHIS.Domain.csproj" />
+    <Project Path="src/eHIS.Infrastructure/eHIS.Infrastructure.csproj" />
+  </Folder>
+</Solution>
