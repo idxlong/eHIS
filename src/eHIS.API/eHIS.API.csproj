@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\eHIS.Application\eHIS.Application.csproj" />
+    <ProjectReference Include="..\eHIS.Infrastructure\eHIS.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

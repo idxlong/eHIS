@@ -1,12 +1,52 @@
+using FluentValidation;
+using Microsoft.EntityFrameworkCore;
+using eHIS.API.Endpoints;
+using eHIS.Application.Behaviors;
+using eHIS.Application.Patients;
+using eHIS.Domain.Aggregates.EncounterAggregate;
+using eHIS.Domain.Aggregates.ObservationAggregate;
+using eHIS.Domain.Aggregates.PatientAggregate;
+using eHIS.Domain.Aggregates.PractitionerAggregate;
+using eHIS.Infrastructure.Persistence;
+using eHIS.Infrastructure.Repositories;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
+// Add EF Core DB context using SQLite
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=eHIS.db"));
+
+// Register Repositories
+builder.Services.AddScoped<IPatientRepository, PatientRepository>();
+builder.Services.AddScoped<IPractitionerRepository, PractitionerRepository>();
+builder.Services.AddScoped<IEncounterRepository, EncounterRepository>();
+builder.Services.AddScoped<IObservationRepository, ObservationRepository>();
+
+// Register MediatR
+builder.Services.AddMediatR(cfg =>
+{
+    cfg.RegisterServicesFromAssembly(typeof(CreatePatientCommand).Assembly);
+    
+    // Register Pipeline Behaviors (Logging and Validation)
+    cfg.AddOpenBehavior(typeof(LoggingBehavior<,>));
+    cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
+});
+
+// Register FluentValidation
+builder.Services.AddValidatorsFromAssembly(typeof(CreatePatientCommand).Assembly);
+
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// Auto-migrate / auto-create database for ease of testing
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    // Ensure database is created based on our entity configurations
+    context.Database.EnsureCreated();
+}
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
@@ -14,28 +54,10 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
+// Map Minimal API Endpoints
+app.MapPatientEndpoints();
+app.MapPractitionerEndpoints();
+app.MapEncounterEndpoints();
+app.MapObservationEndpoints();
 
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
